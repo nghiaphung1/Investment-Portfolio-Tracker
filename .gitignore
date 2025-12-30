@@ -1,5 +1,5 @@
 # ============================================
-# Java & Maven
+# 1. Java & Maven (Build output)
 # ============================================
 target/
 *.class
@@ -10,7 +10,7 @@ hs_err_pid*
 dependency-reduced-pom.xml
 
 # ============================================
-# IDE (IntelliJ, VS Code, Eclipse)
+# 2. IDE & Editors (Cấu hình riêng của máy dev)
 # ============================================
 .idea/
 *.iml
@@ -20,37 +20,53 @@ dependency-reduced-pom.xml
 *.project
 *.settings/
 .vscode/
+.nb-gradle/
 
 # ============================================
-# OS files
+# 3. OS Files (File rác hệ điều hành)
 # ============================================
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # ============================================
-# Logs
+# 4. Logs (File nhật ký chạy)
 # ============================================
 logs/
 *.log
 *.log.*
 
 # ============================================
-# Environment / Secrets
+# 5. SECRETS & ENVIRONMENT (QUAN TRỌNG NHẤT)
 # ============================================
+# Chặn tất cả các file .env (Chứa mật khẩu thật)
 .env
 .env.*
-application-secret.properties
-secret.properties
+
+# Chặn file secret cũ (để phòng hờ nếu bạn chưa xóa file này ở local)
+src/main/resources/application-secret.yml
+src/main/resources/application-secret.properties
+
+# Các file key bảo mật khác
 *.key
 *.pem
 *.p12
-
-# Nếu bạn dùng Docker .env
-docker.env
+*.jks
 
 # ============================================
-# Node (nếu dùng frontend trong project)
+# 6. Docker & Database Data
+# ============================================
+# Nếu bạn mount dữ liệu DB ra thư mục local thì phải chặn nó lại
+# (Tránh commit cả cục database vài GB lên Git)
+postgres_data/
+mysql_data/
+docker-compose.override.yml
+
+# ============================================
+# 7. Frontend (Nếu có folder frontend trong project)
 # ============================================
 node_modules/
 dist/
 build/
+coverage/
+.npm/

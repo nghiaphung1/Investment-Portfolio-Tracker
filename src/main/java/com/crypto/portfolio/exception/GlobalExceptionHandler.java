@@ -1,20 +1,27 @@
 package com.crypto.portfolio.exception;
 
 import com.crypto.portfolio.dto.config.ApiResponse;
+import lombok.extern.slf4j.Slf4j; // 1. Thêm Lombok Log
+import org.springframework.dao.QueryTimeoutException;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-@ControllerAdvice // Đây là nơi "nghe ngóng" mọi lỗi trong hệ thống
+@ControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
-    // 1. Bắt lỗi Validation (@NotNull, @Min...)
+    // Xử lý Validation
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<String>> handleValidationException(MethodArgumentNotValidException ex) {
-        // Giả sử bạn validate ở DTO: @NotBlank(message = "INVALID_SYMBOL")
-        String enumKey = ex.getFieldError().getDefaultMessage();
+        String enumKey = ex.getFieldError() != null ? ex.getFieldError().getDefaultMessage() : "INVALID_KEY";
 
         ErrorCode errorCode;
         try {
@@ -23,64 +30,111 @@ public class GlobalExceptionHandler {
             errorCode = ErrorCode.INVALID_KEY;
         }
 
-        ApiResponse<String> response = ApiResponse.<String>builder()
-                .code(errorCode.getCode()) // Lấy số 2001
-                .message(errorCode.getMessage()) // Lấy chữ "Tên coin không được để trống"
-                .build();
-
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
     }
 
-    //2. Bắt lỗi khi người dùng nhập sai kiểu dữ liệu
+    // Xử lý sai định dạng JSON
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<String>> handleInvalidFormatException(HttpMessageNotReadableException ex) {
+        log.warn("JSON Format Error: ", ex); // Log warning
+
         ErrorCode errorCode = ErrorCode.INVALID_JSON_FORMAT;
         String detailMessage = errorCode.getMessage();
 
-        // Mẹo: Cố gắng lấy tên trường bị sai từ exception của Jackson
-        if (ex.getCause() instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException) {
-            com.fasterxml.jackson.databind.exc.InvalidFormatException iex =
-                    (com.fasterxml.jackson.databind.exc.InvalidFormatException) ex.getCause();
-
-            // Lấy tên trường bị lỗi (ví dụ: type, quantity)
+        if (ex.getCause() instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException iex) {
             if (!iex.getPath().isEmpty()) {
                 String fieldName = iex.getPath().get(0).getFieldName();
-                detailMessage += ": Sai tại trường '" + fieldName + "'";
+                detailMessage += ": Sai định dạng tại trường '" + fieldName + "'";
             }
         }
 
-        ApiResponse<String> response = ApiResponse.<String>builder()
-                .code(errorCode.getCode())
-                .message(detailMessage) // Kết quả: "Dữ liệu... : Sai tại trường 'type'"
-                .build();
-
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message(detailMessage)
+                        .build());
     }
 
+    // 3. Xử lý logic nghiệp vụ (Quan trọng: Map Status code chuẩn)
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<String>> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
 
-        ApiResponse<String> response = ApiResponse.<String>builder()
-                .code(errorCode.getCode())
-                .message(errorCode.getMessage())
-                .build();
+        // Log lỗi nghiệp vụ (tùy mức độ nghiêm trọng)
+        log.error("App Exception: Code={}, Message={}", errorCode.getCode(), errorCode.getMessage());
 
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity
+                .status(errorCode.getStatusCode()) // 3. ErrorCode nên có method getStatusCode() trả về HttpStatus
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
     }
 
-    //2. Bắt tất cả các lỗi lạ khác (NullPointer, Database Error...)
+    // 4. Xử lý upload file quá lớn
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        ErrorCode errorCode = ErrorCode.FILE_TOO_LARGE;
+
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
+    }
+
+    // Xử lý lỗi kết nối Redis/DB
+    @ExceptionHandler({RedisConnectionFailureException.class, QueryTimeoutException.class})
+    public ResponseEntity<ApiResponse<String>> handleServiceUnavailable(Exception ex) {
+        log.error("Infrastructure Error (Redis/DB): ", ex);
+        ErrorCode errorCode = ErrorCode.SERVICE_UNAVAILABLE;
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message("Dịch vụ tạm thời gián đoạn. Vui lòng thử lại sau ít phút.")
+                        .build());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<String>> handleAuthenticationException(AuthenticationException ex) {
+        ErrorCode errorCode = ErrorCode.INVALID_CREDENTIALS; // Mặc định là sai thông tin
+
+        if (ex instanceof DisabledException) {
+            errorCode = ErrorCode.USER_NOT_ENABLED;
+        }
+
+        log.warn("Authentication failed: {}", ex.getMessage());
+
+        return ResponseEntity
+                .status(errorCode.getStatusCode())
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
+    }
+
+    // 5. Xử lý lỗi hệ thống (500)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleUnwantedException(Exception ex) {
-        ErrorCode errorCode = ErrorCode.ERROR_NOT_FOUND;
-        ApiResponse<String> response = ApiResponse.<String>builder()
-                .code(errorCode.getCode()) // Mã lỗi hệ thống
-                .message(errorCode.getMessage()) // Dev xem tạm, Product thật thì nên giấu đi
-                .build();
+        // 2. Log full stack trace để debug (nhưng không show cho user)
+        log.error("Uncaught Exception: ", ex);
 
-        return ResponseEntity.internalServerError().body(response);
+        ErrorCode errorCode = ErrorCode.UNCATEGORIZED_EXCEPTION;
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message("Lỗi hệ thống nội bộ. Vui lòng liên hệ Admin.") // Giấu message lỗi gốc đi
+                        .build());
     }
-
-
-
 }

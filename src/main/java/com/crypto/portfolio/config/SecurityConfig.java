@@ -1,11 +1,15 @@
 package com.crypto.portfolio.config;
 
 import com.crypto.portfolio.security.CustomUserDetailsService;
-import com.crypto.portfolio.security.JwtAuthenticationFilter;
-import com.crypto.portfolio.security.OAuth2LoginSuccessHandler;
+import com.crypto.portfolio.security.JwtAuthenticationEntryPoint;
+import com.crypto.portfolio.security.filter.JwtAuthenticationFilter;
+import com.crypto.portfolio.security.handler.CustomAccessDeniedHandler;
+import com.crypto.portfolio.security.handler.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -31,18 +35,37 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final JwtAuthenticationEntryPoint jwtEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
-    //Container chứa tất cả các filter(middleware) của Spring security dùng để xác thực request trước khi đưa cho controller
+    //Container chứa tất cả các filter(middleware) của Spring security dùng để xác thực request trước khi đưa cho controller ()(
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    @Order(2)
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                //Disable CSRF vì ta dùng Stateless REST API
+                .formLogin(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                //Disable CSRF vì ta dùng Stateless REST API //Đang sửa lại vì dùng Cookie
                 .csrf(AbstractHttpConfigurer::disable)
                 // Cấu hình CORS Domain, method, Header cho phép từ phía FE
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 //Cấu hình quyền truy cập
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/login/**",
+                                "/oauth2/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/auth/oauth2/authorization/**",
+                                "/actuator/**"  // <--- THÊM DÒNG NÀY
+                        ).permitAll()
+                        // Admin Role
+                        .requestMatchers("/api/admin/**", "/api/assets/manage/**").hasRole("ADMIN")
+                        // Feature Role
+                        .requestMatchers("/api/analysis/advanced/**").hasAnyRole("PREMIUM", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 //Cấu hình Session Management: Không lưu session trên server
@@ -53,10 +76,59 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 //Bật OAuth2 Login (Google, Facebook, X)
                 .oauth2Login(oauth2 -> oauth2
+                        //Chuyển hướng đến backend để lấy code từ GG => đưa cho GG => Lấy thông tin từ profile GG
+                        .redirectionEndpoint(redirection -> redirection
+                                .baseUri("/auth/callback/*")
+                        )
+                        //Định nghĩa endpoint để bắt đầu OAuth2 login flow
+                        .authorizationEndpoint(auth -> auth
+                                .baseUri("/auth/oauth2/authorization")
+                        )
                         .successHandler(oAuth2LoginSuccessHandler)
-                );
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler));
 
         return http.build();
+    }
+
+    //Security dành cho admin
+//    @Bean
+//    @Order(1)
+//    public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+//        http
+//                // 1. Chỉ áp dụng cho các URL bắt đầu bằng /admin/
+//                .securityMatcher("/admin/**")
+//
+//                .csrf(AbstractHttpConfigurer::disable)
+//                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+//
+//                // 2. Cấu hình quyền truy cập cụ thể cho Admin
+//                .authorizeHttpRequests(auth -> auth
+//                        .anyRequest().hasRole("ADMIN") // Chỉ cho phép người dùng có ROLE_ADMIN
+//                )
+//
+//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//                .authenticationProvider(authenticationProvider())
+//                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+//
+//        return http.build();
+//    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
+
+        // Tạo FilterRegistrationBean cho filter JWT Filter
+        FilterRegistrationBean<JwtAuthenticationFilter> registrationBean =
+                new FilterRegistrationBean<>(jwtAuthenticationFilter);
+
+        // Vô hiệu hóa việc đăng ký filter vào Servlet Container
+        // Điều này đảm bảo filter CHỈ được quản lý bởi Spring Security Filter Chain
+        registrationBean.setEnabled(false);
+
+        return registrationBean;
     }
 
     // Được AuthenticationManager sử dụng để xác thực người dùng
@@ -68,13 +140,15 @@ public class SecurityConfig {
         return authProvider;
     }
 
+
     // Dùng để điều phối các AuthenticationProvider nào để xác thực
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // Dùng để mã hóa mật khẩu
+
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -84,12 +158,33 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173")); // React/Vite ports
+
+        // 1. Cho phép Frontend gọi vào
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+
+        // 2. Cho phép các phương thức
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        // 3. Cho phép Frontend GỬI LÊN các header này
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "X-XSRF-TOKEN" // FE gửi mã CSRF lên được
+        ));
+
+        // 4. Cho phép sử dụng Cookie (HttpOnly) - QUAN TRỌNG
+        configuration.setAllowCredentials(true);
+
+        // 5. --- BỔ SUNG: Cho phép Frontend ĐỌC ĐƯỢC các header trả về ---
+        // Giúp Frontend debug được Cookie hoặc đọc Token nếu trả về trong Header
+        configuration.setExposedHeaders(List.of("Set-Cookie", "Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+
 }

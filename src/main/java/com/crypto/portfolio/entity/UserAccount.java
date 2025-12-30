@@ -1,12 +1,13 @@
 package com.crypto.portfolio.entity;
 
-import com.crypto.portfolio.entity.type.AuthProvider;
+import com.crypto.portfolio.type.AuthProvider;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
 @Table(name = "user_accounts") // Bảng Credentials
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,6 +22,7 @@ public class UserAccount {
     private AuthProvider provider; // LOCAL, GOOGLE, FACEBOOK
 
     // Nếu là Google/FB thì đây là ID của họ (sub). Nếu Local thì để null hoặc trùng email.
+
     private String providerId;
 
     // Chỉ dùng cho LOCAL, còn lại là Null

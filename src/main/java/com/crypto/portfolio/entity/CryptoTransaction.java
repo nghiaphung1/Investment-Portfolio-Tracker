@@ -1,6 +1,6 @@
 package com.crypto.portfolio.entity;
 
-import com.crypto.portfolio.entity.type.TransactionType;
+import com.crypto.portfolio.type.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 

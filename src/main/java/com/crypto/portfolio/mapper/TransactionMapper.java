@@ -2,7 +2,9 @@ package com.crypto.portfolio.mapper;
 
 import com.crypto.portfolio.dto.transactions.TransactionRequestDTO;
 import com.crypto.portfolio.dto.transactions.TransactionResponseDTO;
+import com.crypto.portfolio.dto.users.UserResponseDTO;
 import com.crypto.portfolio.entity.CryptoTransaction;
+import com.crypto.portfolio.entity.User;
 import org.mapstruct.Mapper;
 
 import java.util.List;
@@ -19,4 +21,5 @@ public interface TransactionMapper {
     // Chiều 2 mở rộng: List<Entity> -> List<DTO>
     // MapStruct tự động chạy vòng lặp for cho bạn luôn!
     List<TransactionResponseDTO> toResponseList(List<CryptoTransaction> entities);
+
 }

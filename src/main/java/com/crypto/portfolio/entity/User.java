@@ -4,11 +4,14 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
-@Table(name = "users") // Bảng Identity
-@Data
+@Table(name = "users")
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,8 +28,44 @@ public class User {
 
     private String avatarUrl;
 
+    private String avatarFileId;
+
+    @Builder.Default
+    private boolean enabled = false;
+
     // Một User có nhiều tài khoản đăng nhập (Local, Google, FB...)
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<UserAccount> accounts = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.EAGER) // Lấy luôn Role khi load User
+    @JoinTable(
+            name = "users_roles", // Tên bảng trung gian trong DB
+            joinColumns = @JoinColumn(name = "user_id", nullable = false), // Khóa ngoại trỏ tới bảng users
+            inverseJoinColumns = @JoinColumn(name = "role_id", nullable = false) // Khóa ngoại trỏ tới bảng roles
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<RefreshToken> refreshTokens = new ArrayList<>();
+
+    // Helper method để thêm Role cực kỳ quan trọng
+    public void addRole(Role role) {
+        this.getRoles().add(role);
+        role.getUsers().add(this);
+    }
+
+    // Helper method để thêm token vào list user và gán user cho token cùng lúc
+    public void addRefreshToken(RefreshToken token) {
+        this.getRefreshTokens().add(token);
+        token.setUser(this); // Bước này cực kỳ quan trọng để lưu được user_id vào DB
+    }
+
+    // Helper method để thêm UserAccount và gán user cho account cùng lúc
+    public void addUserAccount(UserAccount account) {
+        this.getAccounts().add(account);
+        account.setUser(this); // Bước này cực kỳ quan trọng để lưu được user_id vào DB
+    }
 }

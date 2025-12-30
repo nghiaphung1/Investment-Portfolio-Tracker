@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crypto-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
+      - POSTGRES_DB=crypto_portfolio_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crypto-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Bạn cần tạo file này cùng thư mục
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Quan trọng để Prometheus thấy App trên Windows
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crypto-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=Nghia123
+    depends_on:
+      - prometheus
+
+  redis:
+    image: redis:7-alpine
+    container_name: crypto-redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --loglevel warning # Giảm log không cần thiết
+
+volumes:
+  postgres_data:
+  redis_data:

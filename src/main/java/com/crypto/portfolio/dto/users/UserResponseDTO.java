@@ -11,8 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserResponseDTO {
     private Long id;
-    private String username;
     private String fullName;
     private String email;
-    // Tuyệt đối KHÔNG có password ở đây
+    private String avatarUrl;
 }

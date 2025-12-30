@@ -4,11 +4,9 @@ import com.crypto.portfolio.dto.config.ApiResponse;
 import com.crypto.portfolio.dto.portfolio.PortfolioResponseDTO;
 import com.crypto.portfolio.dto.transactions.TransactionRequestDTO;
 import com.crypto.portfolio.dto.transactions.TransactionResponseDTO;
-import com.crypto.portfolio.entity.CryptoTransaction;
-import com.crypto.portfolio.service.TransactionService;
+import com.crypto.portfolio.service.serviceImpl.TransactionServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/transactions")
 public class TransactionController {
 
-    private final TransactionService transactionService;
+    private final TransactionServiceImpl transactionService;
 
     // API lấy danh sách giao dịch
     @GetMapping

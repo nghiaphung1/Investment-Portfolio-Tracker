@@ -1,0 +1,140 @@
+# --- CẤU HÌNH APP (CUSTOM) ---
+app:
+  app-base-url: ${APP_BASE_URL}
+
+  upload:
+    limits:
+      avatar: 5MB
+      document: 10MB
+      video: 50MB
+
+  oauth2:
+    redirect-url: http://localhost:3000/oauth2/redirect
+
+  security:
+    max-devices: 2
+    jwt:
+      secret: ${JWT_SECRET}
+      access-token:
+        expiration: 300000
+      refresh-token:
+        expiration: 604800000
+        cookie-max-age: 604800
+
+  async:
+    file:
+      core-size: 5
+      max-size: 20
+      queue-capacity: 1000
+      prefix: "FileAsync-"
+    mail:
+      core-size: 2
+      max-size: 5
+      queue-capacity: 500
+      prefix: "MailAsync-"
+
+  mail:
+    sender-name: Investment Portfolio Tracker
+
+  otp:
+    secret: ${OTP_SECRET}
+
+# --- CẤU HÌNH CLOUDINARY ---
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  folder:
+    root: investment-portfolio
+    avatars: ${cloudinary.folder.root}/avatars
+
+# --- CẤU HÌNH LOGGING ---
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security.web.DefaultSecurityFilterChain: DEBUG
+    org.springframework.security.web.FilterChainProxy: TRACE
+    org.springframework.boot.web.servlet: DEBUG
+    org.apache.catalina.core.ContainerBase: DEBUG
+
+# --- CẤU HÌNH SPRING BOOT (SYSTEM) ---
+spring:
+  application:
+    name: investment-portfolio
+
+  # Cấu hình giới hạn file upload (QUAN TRỌNG CHO AVATAR)
+  servlet:
+    multipart:
+      max-file-size: 20MB      # Giới hạn 1 file
+      max-request-size: 20MB   # Giới hạn tổng request
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/${DB_NAME}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}   # <--- Dán cái App Password 16 ký tự vào đây
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+    protocol: smtp
+    default-encoding: UTF-8
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - openid
+              - profile
+              - email
+            redirect-uri: "{baseUrl}/auth/callback/google"
+            provider: google
+          facebook:
+            client-id: ${FACEBOOK_CLIENT_ID}
+            client-secret: ${FACEBOOK_CLIENT_SECRET}
+            scope:
+              - public_profile
+              - email
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
