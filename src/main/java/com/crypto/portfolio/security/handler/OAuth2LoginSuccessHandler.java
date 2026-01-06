@@ -117,7 +117,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         // 4. Tạo Refresh Token & Cookie (Gọi service tạo và lưu hash vào DB)
         String refreshTokenRaw = refreshTokenService.createRefreshToken(user.getId(), "Abc", "Abc");
-        ResponseCookie refreshCookie = jwtUtils.generateRefreshCookie(refreshTokenRaw);
+        ResponseCookie refreshCookie = jwtUtils.generateRefreshTokenCookie(refreshTokenRaw);
 
         // 5. Gán Cookie vào Response Header
         // Lưu ý: Dùng addHeader để thêm 2 dòng Set-Cookie riêng biệt

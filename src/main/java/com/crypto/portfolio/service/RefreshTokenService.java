@@ -1,9 +1,7 @@
 package com.crypto.portfolio.service;
 
-import com.crypto.portfolio.entity.RefreshToken;
-
 public interface RefreshTokenService {
-    RefreshToken verifyRefreshToken(String rawToken);
+    Long verifyRefreshToken(String rawToken);
 
     String createRefreshToken(Long userId, String userAgent, String ipAddress);
 
@@ -11,5 +9,4 @@ public interface RefreshTokenService {
 
     void revokeAllUserTokens(Long userId);
 
-    void cleanupExpiredTokens();
 }

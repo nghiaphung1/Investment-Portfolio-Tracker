@@ -51,6 +51,9 @@ public enum ErrorCode {
     EMAIL_SENDING_FAILED(4021, "Gửi email thất bại", HttpStatus.INTERNAL_SERVER_ERROR), // 500
     ROLE_NOT_FOUND(4022, "Vai trò không tồn tại", HttpStatus.NOT_FOUND), // 404
     USER_NOT_ENABLED(4023, "Tài khoản chưa được kích hoạt. Vui lòng xác thực OTP.", HttpStatus.FORBIDDEN),
+    REFRESH_TOKEN_EXPIRED_OR_NOT_EXIST(4024, "Refresh token đã hết hạn hoặc không tồn tại", HttpStatus.UNAUTHORIZED), // 401
+    ACCESS_DENIED(4025, "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN), // 403
+    USER_LOCKED(4026, "Tài khoản đã bị khóa", HttpStatus.FORBIDDEN),
 
     // 6. MODULE OTP - Range: 6000 -> 6999
     OTP_EXPIRED(6001, "Mã OTP đã hết hạn", HttpStatus.BAD_REQUEST),
@@ -58,6 +61,7 @@ public enum ErrorCode {
     TOO_MANY_ATTEMPTS(6003, "Quá nhiều lần thử. Vui lòng yêu cầu mã OTP mới.", HttpStatus.TOO_MANY_REQUESTS), // 429
     OTP_SEND_TOO_FAST(6004, "Yêu cầu mã OTP quá nhanh. Vui lòng chờ trước khi thử lại.", HttpStatus.TOO_MANY_REQUESTS), // 429
     OTP_SHOULD_NOT_BE_NULL(6005, "Mã OTP không được để trống", HttpStatus.BAD_REQUEST),
+
 
 
     // 5. MODULE FILE - Range: 5000 -> 5999

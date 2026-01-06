@@ -47,7 +47,7 @@ public class SecurityConfig {
                 .requestCache(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                //Disable CSRF vì ta dùng Stateless REST API //Đang sửa lại vì dùng Cookie
+                //Disable CSRF vì ta dùng Stateless REST API
                 .csrf(AbstractHttpConfigurer::disable)
                 // Cấu hình CORS Domain, method, Header cho phép từ phía FE
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

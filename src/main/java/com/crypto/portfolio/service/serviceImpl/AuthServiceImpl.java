@@ -16,20 +16,26 @@ import com.crypto.portfolio.repository.UserRepository;
 import com.crypto.portfolio.security.CustomUserDetails;
 import com.crypto.portfolio.service.AuthService;
 import com.crypto.portfolio.service.RefreshTokenService;
+import com.crypto.portfolio.utils.HttpUtils;
 import com.crypto.portfolio.utils.JwtUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import nl.basjes.parse.useragent.UserAgent;
+import nl.basjes.parse.useragent.UserAgentAnalyzer;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -39,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenService refreshTokenService;
     private final RoleRepository roleRepository;
+    private final UserAgentAnalyzer userAgentAnalyzer;
 
     // Đăng kí tài khoản Local
     @Override
@@ -83,21 +90,26 @@ public class AuthServiceImpl implements AuthService {
 
     // Logic Đăng nhập
     @Override
+    @Transactional
     public AuthResponseDTO login(LoginRequestDTO request, HttpServletRequest httpRequest) {
         // Xác thực username/password
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
 
-        // Lấy thông tin thiết bị từ Request
-        String ipAddress = httpRequest.getRemoteAddr();
-        String userAgent = httpRequest.getHeader("User-Agent");
+        // Lấy IP thật bằng hàm Utility
+        String ipAddress = HttpUtils.getClientIp(httpRequest);
+
+        // Lấy User-Agent
+        String deviceInfo = extractDeviceInfo(httpRequest);
+        // Kết quả: "Chrome 100 on Windows 10 (Desktop)"
 
         // Tạo Token
         String accessToken = jwtUtils.generateToken(userPrincipal.getUsername());
-        String refreshToken = refreshTokenService.createRefreshToken(userPrincipal.getId(), userAgent, ipAddress);
+        String refreshToken = refreshTokenService.createRefreshToken(userPrincipal.getId(), deviceInfo, ipAddress);
 
         return AuthResponseDTO.builder()
                 .accessToken(accessToken)
@@ -112,17 +124,35 @@ public class AuthServiceImpl implements AuthService {
     //Logic đăng xuất
     @Override
     public ResponseCookie logout(HttpServletRequest request) {
-        // 1. Lấy token từ cookie
+        // Lấy token từ cookie
         String refreshTokenRaw = jwtUtils.getRefreshTokenFromCookies(request);
 
-        // 2. Xóa token trong DB (Nếu có)
+        // Xóa token trong DB (Nếu có)
         if (refreshTokenRaw != null && !refreshTokenRaw.isEmpty()) {
             refreshTokenService.deleteByRefreshToken(refreshTokenRaw);
         }
 
-        // 3. Trả về Cookie đã được làm sạch (MaxAge = 0)
+        // Trả về Cookie đã được làm sạch (MaxAge = 0)
         return jwtUtils.getCleanRefreshTokenCookie();
     }
 
+    private String extractDeviceInfo(HttpServletRequest httpRequest) {
+        String rawUserAgent = httpRequest.getHeader("User-Agent");
+        if (rawUserAgent == null) return "Unknown Device";
+
+        try {
+            UserAgent agent = userAgentAnalyzer.parse(rawUserAgent);
+
+            String browser = agent.getValue(UserAgent.AGENT_NAME_VERSION_MAJOR);
+            String os = agent.getValue(UserAgent.OPERATING_SYSTEM_NAME_VERSION);
+            String deviceType = agent.getValue(UserAgent.DEVICE_CLASS);
+
+            return String.format("%s on %s (%s)", browser, os, deviceType);
+        } catch (Exception e) {
+            // Log warning thôi, không throw exception chặn đăng nhập
+            log.warn("Không thể parse User-Agent: {}", rawUserAgent);
+            return "Unknown Device (" + rawUserAgent + ")";
+        }
+    }
 
 }

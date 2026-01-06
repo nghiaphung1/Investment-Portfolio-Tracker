@@ -95,7 +95,7 @@ public class JwtUtils {
     }
 
     // Tạo Cookie chứa Refresh Token
-    public ResponseCookie generateRefreshCookie(String token) {
+    public ResponseCookie generateRefreshTokenCookie(String token) {
         return ResponseCookie.from(REFRESH_COOKIE_NAME, token)
                 .path("/")
                 .maxAge(refreshTokenCookieMaxAge) // Dùng biến config (7 ngày)

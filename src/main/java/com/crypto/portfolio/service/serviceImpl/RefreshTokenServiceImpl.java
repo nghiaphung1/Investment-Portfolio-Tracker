@@ -1,134 +1,141 @@
 package com.crypto.portfolio.service.serviceImpl;
 
-import com.crypto.portfolio.entity.RefreshToken;
-import com.crypto.portfolio.entity.User;
+import com.crypto.portfolio.dto.token.RefreshTokenDTO;
 import com.crypto.portfolio.exception.AppException;
 import com.crypto.portfolio.exception.ErrorCode;
-import com.crypto.portfolio.repository.RefreshTokenRepository;
 import com.crypto.portfolio.repository.UserRepository;
 import com.crypto.portfolio.service.RefreshTokenService;
-import com.crypto.portfolio.utils.HashUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
-import java.time.Instant;
-import java.util.Base64;
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional(readOnly = true)
 public class RefreshTokenServiceImpl implements RefreshTokenService {
 
-    // Lấy giới hạn thiết bị
-    @Value("${app.security.max-devices}")
-    private int MAX_DEVICES;
-
-    // Lấy Refresh Token Expiration
-    @Value("${app.security.jwt.refresh-token.expiration}")
-    private long refreshTokenDurationMs;
-
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
     private final UserRepository userRepository;
 
-    // Verify refresh token từ cookie
+    @Value("${app.security.max-devices:2}")
+    private int MAX_DEVICES;
+
+    @Value("${app.security.jwt.refresh-token.expiration:604800000}")
+    private long refreshTokenDurationMs;
+
+    private static final String RT_KEY_PREFIX = "rt:";
+    private static final String USER_RT_LIST_PREFIX = "u_rts:";
+
+    // Verify Refresh Token
     @Override
-    public RefreshToken verifyRefreshToken(String rawToken) {
-        // Hash refresh token raw từ cookie
-        String hashedToken = HashUtils.sha256(rawToken);
+    public Long verifyRefreshToken(String rawRefreshToken) {
+        String refreshTokenKey = RT_KEY_PREFIX + rawRefreshToken;
 
-        // Tìm refresh token đã hash trong DB
-        RefreshToken storedToken = refreshTokenRepository.findByRefreshToken(hashedToken)
-                .orElseThrow(() -> new AppException(ErrorCode.REFRESH_TOKEN_NOT_EXIST));
-
-        // Kiểm tra hết hạn của refresh token
-        if (storedToken.getExpiryDate().isBefore(Instant.now())) {
-            throw new AppException(ErrorCode.REFRESH_TOKEN_EXPIRED);
+        Object objRefreshToKen = redisTemplate.opsForValue().get(refreshTokenKey);
+        if (objRefreshToKen == null) {
+            throw new AppException(ErrorCode.REFRESH_TOKEN_EXPIRED_OR_NOT_EXIST);
         }
-
-        return storedToken;
+        if (objRefreshToKen instanceof RefreshTokenDTO refreshTokenInfo) {
+            return refreshTokenInfo.getUserId();
+        } else {
+            log.error("Dữ liệu Redis sai định dạng tại key: {}", refreshTokenKey);
+            throw new AppException(ErrorCode.REFRESH_TOKEN_EXPIRED_OR_NOT_EXIST);
+        }
     }
 
-    // Tạo mới refresh token
-    @Transactional
     @Override
     public String createRefreshToken(Long userId, String userAgent, String ipAddress) {
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        // Lấy danh sách token hiện tại, sắp xếp cũ nhất lên đầu
-        List<RefreshToken> existingTokens = refreshTokenRepository.findAllByUserIdOrderByCreatedAtAsc(userId);
-
-        // Nếu đã đạt giới hạn -> Xóa thiết bị cũ nhất
-        if (existingTokens.size() >= MAX_DEVICES) {
-            int tokensToDeleteCount = existingTokens.size() - MAX_DEVICES + 1;
-            List<RefreshToken> tokensToDelete = existingTokens.subList(0, tokensToDeleteCount);
-            //Xóa 1 lần nhiều token
-            refreshTokenRepository.deleteAll(tokensToDelete);
-            log.debug("Đã xóa {} thiết bị cũ nhất của user {}", tokensToDeleteCount, userId);
+        // Check user tồn tại
+        if (!userRepository.existsById(userId)) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
-        // Tạo chuỗi ngẫu nhiên (32 bytes)
-        SecureRandom random = new SecureRandom();
-        byte[] bytes = new byte[32];
-        random.nextBytes(bytes);
-        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String userKey = USER_RT_LIST_PREFIX + userId;
 
-        // Hash bằng SHA-256 trước khi lưu
-        String hashedToken = HashUtils.sha256(rawToken);
+        // Logic Max Devices (Dùng StringRedisTemplate để xử lý List)
+        while (true) {
+            Long size = stringRedisTemplate.opsForList().size(userKey);
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .refreshToken(hashedToken)
-                .expiryDate(Instant.now().plusMillis(refreshTokenDurationMs))
+            if (size == null || size < MAX_DEVICES) {
+                break;
+            }
+
+            String oldRefreshToken = stringRedisTemplate.opsForList().rightPop(userKey);
+
+            if (oldRefreshToken != null) {
+                // Xóa key JSON chi tiết (Key này vẫn dùng redisTemplate vì nó chứa Object)
+                redisTemplate.delete(RT_KEY_PREFIX + oldRefreshToken);
+                log.debug("User {}: Đã xóa thiết bị cũ (Token: {})", userId, oldRefreshToken);
+            }
+        }
+
+        // Tạo Token mới
+        String rawRefreshToken = UUID.randomUUID().toString();
+        String refreshTokenKey = RT_KEY_PREFIX + rawRefreshToken;
+
+        // Tạo DTO
+        RefreshTokenDTO refreshTokenInfo = RefreshTokenDTO.builder()
+                .id(rawRefreshToken)
+                .userId(userId)
                 .userAgent(userAgent)
                 .ipAddress(ipAddress)
+                .issuedAt(System.currentTimeMillis())
                 .build();
 
-        refreshTokenRepository.save(refreshToken);
+        // Lưu Object chi tiết (Dùng RedisTemplate - JSON)
+        redisTemplate.opsForValue().set(refreshTokenKey, refreshTokenInfo, refreshTokenDurationMs, TimeUnit.MILLISECONDS);
 
-        // Trả về raw refresh token cho user cất vào Cookie
-        return rawToken;
+        // Lưu ID vào danh sách (SỬA ĐIỂM 2: Dùng StringRedisTemplate cho đồng bộ)
+        stringRedisTemplate.opsForList().leftPush(userKey, rawRefreshToken);
+
+        // Set thời gian hết hạn cho danh sách (SỬA ĐIỂM 3: Dùng StringRedisTemplate)
+        stringRedisTemplate.expire(userKey, Duration.ofMillis(refreshTokenDurationMs));
+
+        return rawRefreshToken;
     }
 
-    /**
-     * Chức năng Đăng xuất: Xóa token cụ thể
-     */
-    @Transactional
+    // --- Xóa Refresh Token ---
     @Override
     public void deleteByRefreshToken(String rawToken) {
-        String hashedToken = HashUtils.sha256(rawToken);
-        refreshTokenRepository.findByRefreshToken(hashedToken).ifPresent(refreshTokenRepository::delete);
+        String tokenKey = RT_KEY_PREFIX + rawToken;
+
+        // [FIX 4] Lấy DTO để tìm userId
+        RefreshTokenDTO tokenInfo = (RefreshTokenDTO) redisTemplate.opsForValue().get(tokenKey);
+
+        if (tokenInfo != null) {
+            // Xóa Key 1
+            redisTemplate.delete(tokenKey);
+
+            // Xóa Token khỏi danh sách (Key 2)
+            String userKey = USER_RT_LIST_PREFIX + tokenInfo.getUserId();
+            redisTemplate.opsForList().remove(userKey, 1, rawToken);
+        }
     }
 
-    /**
-     * Chức năng Bảo mật: Đăng xuất khỏi TẤT CẢ thiết bị (Dùng khi đổi mật khẩu)
-     */
-
-    @Transactional
+    // --- Revoke All ---
     @Override
     public void revokeAllUserTokens(Long userId) {
-        refreshTokenRepository.deleteByUserId(userId);
-//        log.info("Revoked all sessions for User ID: {}", userId);
-    }
+        String userKey = USER_RT_LIST_PREFIX + userId;
 
-    /**
-     * Cron Job: Tự động chạy lúc 2:00 sáng mỗi ngày để dọn rác
-     */
-    @Scheduled(cron = "0 0 2 * * ?")
-    @Transactional
-    @Override
-    public void cleanupExpiredTokens() {
-        Instant now = Instant.now();
-        log.info("Bắt đầu dọn dẹp Refresh Token hết hạn lúc: {}", now);
-        refreshTokenRepository.deleteByExpiryDateBefore(now);
-        log.info("Đã dọn dẹp xong!");
+        // range trả về List<Object> do generic type
+        List<Object> tokens = redisTemplate.opsForList().range(userKey, 0, -1);
+
+        if (tokens != null && !tokens.isEmpty()) {
+            for (Object tokenObj : tokens) {
+                String token = tokenObj.toString();
+                redisTemplate.delete(RT_KEY_PREFIX + token);
+            }
+            redisTemplate.delete(userKey);
+        }
+        log.info("Đã đăng xuất tất cả thiết bị cho User ID: {}", userId);
     }
 }

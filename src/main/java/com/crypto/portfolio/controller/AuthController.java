@@ -7,10 +7,10 @@ import com.crypto.portfolio.dto.auth.RegisterRequestDTO;
 import com.crypto.portfolio.dto.otp.ResendOtpRequestDTO;
 import com.crypto.portfolio.dto.otp.VerifyOtpRequestDTO;
 import com.crypto.portfolio.dto.users.UserResponseDTO;
-import com.crypto.portfolio.entity.RefreshToken;
 import com.crypto.portfolio.entity.User;
 import com.crypto.portfolio.exception.AppException;
 import com.crypto.portfolio.exception.ErrorCode;
+import com.crypto.portfolio.repository.UserRepository;
 import com.crypto.portfolio.service.AuthService;
 import com.crypto.portfolio.service.RefreshTokenService;
 import com.crypto.portfolio.service.facade.AuthFacade;
@@ -32,6 +32,7 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final AuthService authService;
     private final AuthFacade authFacade;
+    private final UserRepository userRepository;
 
     //Login : Tạo Access + Refresh Token, lưu Refresh Token vào Cookie
     @PostMapping("/login")
@@ -39,10 +40,10 @@ public class AuthController {
 
         AuthResponseDTO response = authService.login(request, httpRequest);
 
-        ResponseCookie refreshCookie = jwtUtils.generateRefreshCookie(response.getRefreshToken());
+        ResponseCookie refreshTokenCookie = jwtUtils.generateRefreshTokenCookie(response.getRefreshToken());
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                 .body(ApiResponse.<AuthResponseDTO>builder()
                         .message("Đăng nhập thành công")
                         .result(response)
@@ -52,34 +53,39 @@ public class AuthController {
     // Refresh token: Lấy IP/Agent để tạo token mới (Rotation)
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponseDTO>> refreshToken(HttpServletRequest request) {
+        // 1. Lấy token từ Cookie
         String refreshTokenRaw = jwtUtils.getRefreshTokenFromCookies(request);
 
         if (refreshTokenRaw == null) {
-            throw new AppException(ErrorCode.USER_NOT_LOGIN);
+            throw new AppException(ErrorCode.REFRESH_TOKEN_NOT_EXIST);
         }
 
-        // Verify token cũ
-        RefreshToken storedToken = refreshTokenService.verifyRefreshToken(refreshTokenRaw);
-        User user = storedToken.getUser();
+        // 2. Validate Token & Lấy UserId từ Redis (Cực nhanh)
+        Long userId = refreshTokenService.verifyRefreshToken(refreshTokenRaw);
 
-        // Lấy thông tin thiết bị hiện tại
+        // 3. Lấy thông tin User mới nhất từ DB
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // 4. Token Rotation (Xóa cũ - Tạo mới)
+        // Xóa token cũ để chống tấn công Replay Attack
+        refreshTokenService.deleteByRefreshToken(refreshTokenRaw);
+
+        // Tạo cặp token mới
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
-
-        // Tạo token mới với đầy đủ thông tin thiết bị
-        String newRefreshTokenRaw = refreshTokenService.createRefreshToken(user.getId(), userAgent, ipAddress);
-
-        // Tạo Access Token
+        String newRefreshToken = refreshTokenService.createRefreshToken(user.getId(), userAgent, ipAddress);
         String newAccessToken = jwtUtils.generateToken(user.getEmail());
 
-        ResponseCookie newRefreshCookie = jwtUtils.generateRefreshCookie(newRefreshTokenRaw);
+        // 5. Trả về
+        ResponseCookie newRefreshCookie = jwtUtils.generateRefreshTokenCookie(newRefreshToken);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
                 .body(ApiResponse.<AuthResponseDTO>builder()
                         .message("Refresh Token thành công")
                         .result(AuthResponseDTO.builder()
-                                .accessToken(newAccessToken)
+                                .accessToken(newAccessToken) // Chỉ trả Access Token mới
                                 .email(user.getEmail())
                                 .build())
                         .build());
@@ -88,11 +94,15 @@ public class AuthController {
     // Logout : Xóa Cookie và xóa token trong DB
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
+        // 1. Lấy token để xóa trong Redis
+        String refreshTokenRaw = jwtUtils.getRefreshTokenFromCookies(request);
+        if (refreshTokenRaw != null) {
+            refreshTokenService.deleteByRefreshToken(refreshTokenRaw);
+        }
 
-        // Gọi Service xử lý logic và nhận về Cookie "chết"
-        ResponseCookie cleanCookie = authService.logout(request);
+        // 2. Xóa Cookie ở trình duyệt
+        ResponseCookie cleanCookie = jwtUtils.getCleanRefreshTokenCookie();
 
-        // Trả Response
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cleanCookie.toString())
                 .body(ApiResponse.<Void>builder()
