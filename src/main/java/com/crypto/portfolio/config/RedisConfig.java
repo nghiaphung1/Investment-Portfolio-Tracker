@@ -5,9 +5,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.util.List;
 
 @Configuration
 public class RedisConfig {
@@ -36,6 +39,12 @@ public class RedisConfig {
     }
 
     @Bean
+    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        return new StringRedisTemplate(connectionFactory);
+    }
+
+
+    @Bean
     public DefaultRedisScript<String> saveOtpScript() {
         DefaultRedisScript<String> script = new DefaultRedisScript<>();
         // Load file từ resources
@@ -57,6 +66,14 @@ public class RedisConfig {
         DefaultRedisScript<String> script = new DefaultRedisScript<>();
         script.setLocation(new ClassPathResource("scripts/resend_otp.lua"));
         script.setResultType(String.class);
+        return script;
+    }
+
+    @Bean
+    public DefaultRedisScript<List> saveRefreshTokenScript() {
+        DefaultRedisScript<List> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("scripts/save_rt.lua"));
+        script.setResultType(List.class);
         return script;
     }
 }

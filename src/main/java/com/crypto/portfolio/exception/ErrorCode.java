@@ -14,6 +14,7 @@ public enum ErrorCode {
     ERROR_NOT_FOUND(99999, "Lỗi hệ thống chưa phát hiện", HttpStatus.INTERNAL_SERVER_ERROR), // 500
     THREAD_INTERRUPTED(1003, "Luồng bị gián đoạn", HttpStatus.INTERNAL_SERVER_ERROR), // 500
     SERVICE_UNAVAILABLE(1004, "Dịch vụ tạm thời gián đoạn. Vui lòng thử lại sau ít phút.", HttpStatus.SERVICE_UNAVAILABLE), // 503
+    REDIS_CONNECTION_ERROR(1005, "Kết nối Redis thất bại", HttpStatus.INTERNAL_SERVER_ERROR), // 500
 
     // 2. MODULE TRANSACTION - Range: 2000 -> 2999
     INVALID_SYMBOL(2001, "Tên coin không được để trống", HttpStatus.BAD_REQUEST),
