@@ -1,18 +1,17 @@
 package com.crypto.portfolio.config;
 
 import com.crypto.portfolio.security.CustomUserDetailsService;
-import com.crypto.portfolio.security.JwtAuthenticationEntryPoint;
-import com.crypto.portfolio.security.filter.JwtAuthenticationFilter;
+import com.crypto.portfolio.security.CustomAuthenticationEntryPoint;
 import com.crypto.portfolio.security.handler.CustomAccessDeniedHandler;
 import com.crypto.portfolio.security.handler.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,7 +20,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -32,11 +30,10 @@ import java.util.List;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
-    private final JwtAuthenticationEntryPoint jwtEntryPoint;
-    private final CustomAccessDeniedHandler accessDeniedHandler;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     //Container chứa tất cả các filter(middleware) của Spring security dùng để xác thực request trước khi đưa cho controller ()(
     @Bean
@@ -60,7 +57,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/auth/oauth2/authorization/**",
-                                "/actuator/**"  // <--- THÊM DÒNG NÀY
+                                "/actuator/**"
                         ).permitAll()
                         // Admin Role
                         .requestMatchers("/api/admin/**", "/api/assets/manage/**").hasRole("ADMIN")
@@ -72,8 +69,6 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 //Đăng ký AuthenticationProvider
                 .authenticationProvider(authenticationProvider())
-                //Đăng ký JwtAuthenticationFilter trước UsernamePasswordAuthenticationFilter
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 //Bật OAuth2 Login (Google, Facebook, X)
                 .oauth2Login(oauth2 -> oauth2
                         //Chuyển hướng đến backend để lấy code từ GG => đưa cho GG => Lấy thông tin từ profile GG
@@ -86,9 +81,12 @@ public class SecurityConfig {
                         )
                         .successHandler(oAuth2LoginSuccessHandler)
                 )
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(Customizer.withDefaults()))
+
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(jwtEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler));
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler));
 
         return http.build();
     }
@@ -116,21 +114,6 @@ public class SecurityConfig {
 //        return http.build();
 //    }
 
-    @Bean
-    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
-            JwtAuthenticationFilter jwtAuthenticationFilter) {
-
-        // Tạo FilterRegistrationBean cho filter JWT Filter
-        FilterRegistrationBean<JwtAuthenticationFilter> registrationBean =
-                new FilterRegistrationBean<>(jwtAuthenticationFilter);
-
-        // Vô hiệu hóa việc đăng ký filter vào Servlet Container
-        // Điều này đảm bảo filter CHỈ được quản lý bởi Spring Security Filter Chain
-        registrationBean.setEnabled(false);
-
-        return registrationBean;
-    }
-
     // Được AuthenticationManager sử dụng để xác thực người dùng
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -146,8 +129,6 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {

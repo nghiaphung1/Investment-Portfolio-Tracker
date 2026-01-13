@@ -17,6 +17,7 @@ import com.crypto.portfolio.security.CustomUserDetails;
 import com.crypto.portfolio.service.AuthService;
 import com.crypto.portfolio.service.RefreshTokenService;
 import com.crypto.portfolio.utils.HttpUtils;
+import com.crypto.portfolio.utils.JwtService;
 import com.crypto.portfolio.utils.JwtUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final RoleRepository roleRepository;
     private final UserAgentAnalyzer userAgentAnalyzer;
+    private final JwtService jwtService;
 
     // Đăng kí tài khoản Local
     @Override
@@ -96,7 +98,6 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
 
@@ -108,7 +109,7 @@ public class AuthServiceImpl implements AuthService {
         // Kết quả: "Chrome 100 on Windows 10 (Desktop)"
 
         // Tạo Token
-        String accessToken = jwtUtils.generateToken(userPrincipal.getUsername());
+        String accessToken = jwtService.createToken(userPrincipal);
         String refreshToken = refreshTokenService.createRefreshToken(userPrincipal.getId(), deviceInfo, ipAddress);
 
         return AuthResponseDTO.builder()
