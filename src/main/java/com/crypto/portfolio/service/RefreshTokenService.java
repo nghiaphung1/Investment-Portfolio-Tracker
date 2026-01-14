@@ -9,4 +9,6 @@ public interface RefreshTokenService {
 
     void revokeAllUserTokens(Long userId);
 
+    String rotateRefreshToken(String oldRawToken, String ipAddress, String userAgent);
+
 }
