@@ -11,7 +11,7 @@ import com.crypto.portfolio.mapper.UserMapper;
 import com.crypto.portfolio.service.StorageService;
 import com.crypto.portfolio.service.UserService;
 import com.crypto.portfolio.service.facade.UserFacade;
-import com.crypto.portfolio.type.StorageProvider;
+import com.crypto.portfolio.constants.StorageProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;

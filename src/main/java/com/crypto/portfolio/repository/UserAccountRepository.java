@@ -1,7 +1,7 @@
 package com.crypto.portfolio.repository;
 
 import com.crypto.portfolio.entity.UserAccount;
-import com.crypto.portfolio.type.AuthProvider;
+import com.crypto.portfolio.constants.AuthProvider;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

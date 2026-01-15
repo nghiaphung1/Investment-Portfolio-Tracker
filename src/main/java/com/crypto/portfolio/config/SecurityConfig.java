@@ -1,7 +1,7 @@
 package com.crypto.portfolio.config;
 
-import com.crypto.portfolio.security.CustomUserDetailsService;
-import com.crypto.portfolio.security.CustomAuthenticationEntryPoint;
+import com.crypto.portfolio.security.user.CustomUserDetailsService;
+import com.crypto.portfolio.security.handler.CustomAuthenticationEntryPoint;
 import com.crypto.portfolio.security.handler.CustomAccessDeniedHandler;
 import com.crypto.portfolio.security.handler.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;

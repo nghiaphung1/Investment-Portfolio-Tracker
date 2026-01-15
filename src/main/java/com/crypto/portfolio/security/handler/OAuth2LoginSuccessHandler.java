@@ -2,7 +2,7 @@ package com.crypto.portfolio.security.handler;
 
 import com.crypto.portfolio.entity.User;
 import com.crypto.portfolio.entity.UserAccount;
-import com.crypto.portfolio.type.AuthProvider;
+import com.crypto.portfolio.constants.AuthProvider;
 import com.crypto.portfolio.repository.UserAccountRepository;
 import com.crypto.portfolio.repository.UserRepository;
 import com.crypto.portfolio.utils.JwtUtils;
@@ -113,7 +113,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         // --- PHẦN MỚI: TẠO COOKIE (Thay vì trả về URL Param) ---
 
         // 3. Tạo Access Token & Cookie
-        String accessToken = jwtUtils.generateToken(user.getEmail());
+//        String accessToken = jwtUtils.generateToken(user.getEmail());
 
         // 4. Tạo Refresh Token & Cookie (Gọi service tạo và lưu hash vào DB)
         String refreshTokenRaw = refreshTokenService.createRefreshToken(user.getId(), "Abc", "Abc");

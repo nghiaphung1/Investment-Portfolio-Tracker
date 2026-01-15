@@ -1,6 +1,6 @@
 package com.crypto.portfolio.annotation;
 
-import com.crypto.portfolio.type.StorageProvider;
+import com.crypto.portfolio.constants.StorageProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import java.lang.annotation.*;
 

@@ -15,6 +15,7 @@ public enum ErrorCode {
     THREAD_INTERRUPTED(1003, "Luồng bị gián đoạn", HttpStatus.INTERNAL_SERVER_ERROR), // 500
     SERVICE_UNAVAILABLE(1004, "Dịch vụ tạm thời gián đoạn. Vui lòng thử lại sau ít phút.", HttpStatus.SERVICE_UNAVAILABLE), // 503
     REDIS_CONNECTION_ERROR(1005, "Kết nối Redis thất bại", HttpStatus.INTERNAL_SERVER_ERROR), // 500
+    PARSE_ERROR(1006, "Lỗi khi chuyển đổi dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR), // 500
 
     // 2. MODULE TRANSACTION - Range: 2000 -> 2999
     INVALID_SYMBOL(2001, "Tên coin không được để trống", HttpStatus.BAD_REQUEST),
@@ -63,7 +64,8 @@ public enum ErrorCode {
     OTP_SEND_TOO_FAST(6004, "Yêu cầu mã OTP quá nhanh. Vui lòng chờ trước khi thử lại.", HttpStatus.TOO_MANY_REQUESTS), // 429
     OTP_SHOULD_NOT_BE_NULL(6005, "Mã OTP không được để trống", HttpStatus.BAD_REQUEST),
 
-
+    // 7. MODULE ASSET - Range: 7000 -> 7999
+    ASSET_NOT_FOUND(7001, "Coin không tồn tại", HttpStatus.NOT_FOUND),
 
     // 5. MODULE FILE - Range: 5000 -> 5999
     FILE_NOT_FOUND(5001, "File không tồn tại", HttpStatus.NOT_FOUND), // 404

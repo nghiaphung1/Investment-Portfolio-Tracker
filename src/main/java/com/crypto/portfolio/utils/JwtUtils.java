@@ -19,80 +19,10 @@ import java.util.function.Function;
 @Component
 public class JwtUtils {
 
-    @Value("${app.security.jwt.secret}")
-    private String secretKey;
-
-    @Value("${app.security.jwt.access-token.expiration}")
-    private long jwtExpiration;
-
-    @Value("${app.security.jwt.refresh-token.expiration}")
-    private long refreshExpiration;
-
     @Value("${app.security.jwt.refresh-token.cookie-max-age}")
     private long refreshTokenCookieMaxAge;
-
     // Tên Cookie
     private final String REFRESH_COOKIE_NAME = "refreshToken";
-
-    // 1. Lấy Username từ Token
-    public String extractUsername(String token) {
-        try {
-            return extractClaim(token, Claims::getSubject);
-        } catch (ExpiredJwtException e) {
-            return e.getClaims().getSubject();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    // 2. Lấy một thông tin cụ thể
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    // 3. Tạo Token
-    public String generateToken(String username) {
-        return buildToken(new HashMap<>(), username);
-    }
-
-    // 4. Logic tạo Token chi tiết
-    private String buildToken(Map<String, Object> extraClaims, String username) {
-        return Jwts.builder()
-                .setClaims(extraClaims)
-                .setSubject(username)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    // 5. Kiểm tra Token
-    public boolean isTokenValid(String token, String username) {
-        final String extractedUsername = extractUsername(token);
-        return (extractedUsername.equals(username)) && !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSignInKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
-
-    private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
 
     // Tạo Cookie chứa Refresh Token
     public ResponseCookie generateRefreshTokenCookie(String token) {

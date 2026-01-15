@@ -18,10 +18,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
-    // 1. Sử dụng Delegate chuẩn của Spring Security (dành cho OAuth2 Resource Server)
-    // Class này sẽ tự động set Status 403 và Header "WWW-Authenticate: Bearer error=insufficient_scope"
     private final AccessDeniedHandler delegate = new BearerTokenAccessDeniedHandler();
-
     private final ObjectMapper objectMapper;
 
     @Override

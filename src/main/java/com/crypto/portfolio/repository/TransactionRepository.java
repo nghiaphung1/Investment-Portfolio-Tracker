@@ -14,4 +14,6 @@ public interface TransactionRepository extends JpaRepository<CryptoTransaction, 
 
     //Tim tất cả giao dịch theo userId
     List<CryptoTransaction> findAllByUserId(Long userId);
+
+    List<CryptoTransaction> findByUserId(Long userId);
 }

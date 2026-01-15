@@ -1,6 +1,6 @@
 package com.crypto.portfolio.entity;
 
-import com.crypto.portfolio.type.AuthProvider;
+import com.crypto.portfolio.constants.AuthProvider;
 import jakarta.persistence.*;
 import lombok.*;
 

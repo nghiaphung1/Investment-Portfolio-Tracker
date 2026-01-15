@@ -1,6 +1,5 @@
 package com.crypto.portfolio.config;
 
-import com.crypto.portfolio.utils.JwtService;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
 import org.springframework.context.annotation.Bean;
@@ -17,7 +16,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-import static com.crypto.portfolio.utils.JwtService.JWT_ALGORITHM;
+import static com.crypto.portfolio.security.jwt.JwtService.JWT_ALGORITHM;
 
 
 @Configuration

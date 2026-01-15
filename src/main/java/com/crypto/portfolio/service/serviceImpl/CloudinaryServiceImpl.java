@@ -7,7 +7,7 @@ import com.crypto.portfolio.dto.file.FileUploadResponseDTO;
 import com.crypto.portfolio.exception.AppException;
 import com.crypto.portfolio.exception.ErrorCode;
 import com.crypto.portfolio.service.StorageService;
-import com.crypto.portfolio.type.StorageProvider;
+import com.crypto.portfolio.constants.StorageProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

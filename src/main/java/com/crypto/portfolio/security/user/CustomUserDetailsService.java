@@ -1,8 +1,8 @@
-package com.crypto.portfolio.security;
+package com.crypto.portfolio.security.user;
 
 import com.crypto.portfolio.entity.User;
 import com.crypto.portfolio.entity.UserAccount;
-import com.crypto.portfolio.type.AuthProvider;
+import com.crypto.portfolio.constants.AuthProvider;
 import com.crypto.portfolio.repository.UserAccountRepository;
 import com.crypto.portfolio.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

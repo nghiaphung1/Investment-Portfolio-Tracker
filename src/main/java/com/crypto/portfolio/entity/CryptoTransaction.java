@@ -1,6 +1,6 @@
 package com.crypto.portfolio.entity;
 
-import com.crypto.portfolio.type.TransactionType;
+import com.crypto.portfolio.constants.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,9 +20,6 @@ public class CryptoTransaction extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String symbol; // Ví dụ: "BTC", "ETH", "SOL" - Nên lưu in hoa
-
     // Quan trọng: Dùng BigDecimal cho tiền tệ và số lượng crypto
     // precision = 19, scale = 8 nghĩa là tối đa 19 số, 8 số sau dấu phẩy (chuẩn của Bitcoin)
     @Column(nullable = false, precision = 19, scale = 8)
@@ -41,5 +38,8 @@ public class CryptoTransaction extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)      // Tên cột trong DB sẽ là user_id
     private User user;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "symbol", referencedColumnName = "symbol", nullable = false)
+    private Asset asset;
     // Có thể thêm field 'fee' (phí giao dịch) sau này
 }

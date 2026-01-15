@@ -3,7 +3,7 @@ package com.crypto.portfolio.service.serviceImpl;
 import com.crypto.portfolio.annotation.Storage;
 import com.crypto.portfolio.dto.file.FileUploadResponseDTO;
 import com.crypto.portfolio.service.StorageService;
-import com.crypto.portfolio.type.StorageProvider;
+import com.crypto.portfolio.constants.StorageProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 

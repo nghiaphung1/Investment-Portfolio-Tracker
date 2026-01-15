@@ -51,45 +51,45 @@ public class AuthController {
     }
 
     // Refresh token: Lấy IP/Agent để tạo token mới (Rotation)
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponseDTO>> refreshToken(HttpServletRequest request) {
-        // 1. Lấy token từ Cookie
-        String refreshTokenRaw = jwtUtils.getRefreshTokenFromCookies(request);
-
-        if (refreshTokenRaw == null) {
-            throw new AppException(ErrorCode.REFRESH_TOKEN_NOT_EXIST);
-        }
-
-        // 2. Validate Token & Lấy UserId từ Redis (Cực nhanh)
-        Long userId = refreshTokenService.verifyRefreshToken(refreshTokenRaw);
-
-        // 3. Lấy thông tin User mới nhất từ DB
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        // 4. Token Rotation (Xóa cũ - Tạo mới)
-        // Xóa token cũ để chống tấn công Replay Attack
-        refreshTokenService.deleteByRefreshToken(refreshTokenRaw);
-
-        // Tạo cặp token mới
-        String ipAddress = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
-        String newRefreshToken = refreshTokenService.createRefreshToken(user.getId(), userAgent, ipAddress);
-        String newAccessToken = jwtUtils.generateToken(user.getEmail());
-
-        // 5. Trả về
-        ResponseCookie newRefreshCookie = jwtUtils.generateRefreshTokenCookie(newRefreshToken);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
-                .body(ApiResponse.<AuthResponseDTO>builder()
-                        .message("Refresh Token thành công")
-                        .result(AuthResponseDTO.builder()
-                                .accessToken(newAccessToken) // Chỉ trả Access Token mới
-                                .email(user.getEmail())
-                                .build())
-                        .build());
-    }
+//    @PostMapping("/refresh")
+//    public ResponseEntity<ApiResponse<AuthResponseDTO>> refreshToken(HttpServletRequest request) {
+//        // 1. Lấy token từ Cookie
+//        String refreshTokenRaw = jwtUtils.getRefreshTokenFromCookies(request);
+//
+//        if (refreshTokenRaw == null) {
+//            throw new AppException(ErrorCode.REFRESH_TOKEN_NOT_EXIST);
+//        }
+//
+//        // 2. Validate Token & Lấy UserId từ Redis (Cực nhanh)
+//        Long userId = refreshTokenService.verifyRefreshToken(refreshTokenRaw);
+//
+//        // 3. Lấy thông tin User mới nhất từ DB
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+//
+//        // 4. Token Rotation (Xóa cũ - Tạo mới)
+//        // Xóa token cũ để chống tấn công Replay Attack
+//        refreshTokenService.deleteByRefreshToken(refreshTokenRaw);
+//
+//        // Tạo cặp token mới
+//        String ipAddress = request.getRemoteAddr();
+//        String userAgent = request.getHeader("User-Agent");
+//        String newRefreshToken = refreshTokenService.createRefreshToken(user.getId(), userAgent, ipAddress);
+//        String newAccessToken = jwtUtils.generateToken(user.getEmail());
+//
+//        // 5. Trả về
+//        ResponseCookie newRefreshCookie = jwtUtils.generateRefreshTokenCookie(newRefreshToken);
+//
+//        return ResponseEntity.ok()
+//                .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
+//                .body(ApiResponse.<AuthResponseDTO>builder()
+//                        .message("Refresh Token thành công")
+//                        .result(AuthResponseDTO.builder()
+//                                .accessToken(newAccessToken) // Chỉ trả Access Token mới
+//                                .email(user.getEmail())
+//                                .build())
+//                        .build());
+//    }
 
     // Logout : Xóa Cookie và xóa token trong DB
     @PostMapping("/logout")

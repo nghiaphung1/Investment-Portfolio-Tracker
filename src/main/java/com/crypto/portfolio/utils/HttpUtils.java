@@ -1,10 +1,12 @@
 package com.crypto.portfolio.utils;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public class HttpUtils {
 
-    private static final String[] IP_HEADERS = {
+    private final String[] IP_HEADERS = {
             "X-Forwarded-For",
             "Proxy-Client-IP",
             "WL-Proxy-Client-IP",
@@ -19,7 +21,7 @@ public class HttpUtils {
             // Bạn cũng có thể thêm "CF-Connecting-IP" nếu dùng Cloudflare
     };
 
-    public static String getClientIp(HttpServletRequest request) {
+    public String getClientIp(HttpServletRequest request) {
         for (String header : IP_HEADERS) {
             String value = request.getHeader(header);
             if (value != null && value.length() > 0 && !"unknown".equalsIgnoreCase(value)) {

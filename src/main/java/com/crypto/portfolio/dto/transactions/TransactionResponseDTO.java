@@ -1,6 +1,6 @@
 package com.crypto.portfolio.dto.transactions;
 
-import com.crypto.portfolio.type.TransactionType;
+import com.crypto.portfolio.constants.TransactionType;
 import lombok.Data;
 
 import java.math.BigDecimal;

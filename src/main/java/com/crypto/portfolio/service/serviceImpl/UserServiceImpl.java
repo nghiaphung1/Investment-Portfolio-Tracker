@@ -4,7 +4,7 @@ import com.crypto.portfolio.dto.users.ChangePasswordRequestDTO;
 import com.crypto.portfolio.dto.file.FileUploadResponseDTO;
 import com.crypto.portfolio.entity.User;
 import com.crypto.portfolio.entity.UserAccount;
-import com.crypto.portfolio.type.AuthProvider;
+import com.crypto.portfolio.constants.AuthProvider;
 import com.crypto.portfolio.exception.AppException;
 import com.crypto.portfolio.exception.ErrorCode;
 import com.crypto.portfolio.repository.UserAccountRepository;

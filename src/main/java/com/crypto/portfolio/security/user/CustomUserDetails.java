@@ -1,4 +1,4 @@
-package com.crypto.portfolio.security;
+package com.crypto.portfolio.security.user;
 
 import com.crypto.portfolio.entity.User;
 import com.crypto.portfolio.entity.UserAccount;
@@ -13,7 +13,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter

@@ -1,14 +1,22 @@
 package com.crypto.portfolio.service.serviceImpl;
 
+import com.crypto.portfolio.constants.TransactionType;
 import com.crypto.portfolio.dto.portfolio.PortfolioResponseDTO;
 import com.crypto.portfolio.dto.transactions.TransactionRequestDTO;
 import com.crypto.portfolio.dto.transactions.TransactionResponseDTO;
+import com.crypto.portfolio.entity.Asset;
 import com.crypto.portfolio.entity.CryptoTransaction;
-import com.crypto.portfolio.type.TransactionType;
+import com.crypto.portfolio.entity.User;
+import com.crypto.portfolio.exception.AppException;
+import com.crypto.portfolio.exception.ErrorCode;
 import com.crypto.portfolio.mapper.TransactionMapper;
+import com.crypto.portfolio.repository.AssetRepository;
 import com.crypto.portfolio.repository.TransactionRepository;
+import com.crypto.portfolio.repository.UserRepository;
 import com.crypto.portfolio.service.TransactionService;
+import com.crypto.portfolio.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,102 +28,132 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
-    private final TransactionRepository repository;
+    private final TransactionRepository transactionRepository;
+    private final AssetRepository assetRepository;
+    private final UserRepository userRepository;
     private final TransactionMapper mapper;
 
-    // Hàm lấy list danh sách transactions
     @Override
+    @Transactional(readOnly = true) // Tối ưu hiệu năng cho thao tác đọc
     public List<TransactionResponseDTO> getAllTransactions() {
-        List<CryptoTransaction> listTransaction = repository.findAll();
-        // Dùng Mapper chuyển cả danh sách Entity -> DTO
+        Long userId = SecurityUtils.getCurrentUserId();
+        // Nên dùng method có @EntityGraph trong Repository để tránh lỗi N+1
+        List<CryptoTransaction> listTransaction = transactionRepository.findByUserId(userId);
         return mapper.toResponseList(listTransaction);
     }
 
-    // Hàm thêm mới 1 transaction
-    @Transactional
     @Override
+    @Transactional
     public TransactionResponseDTO addTransaction(TransactionRequestDTO request) {
-        // Chuyển từ DTO -> Entity
-        CryptoTransaction transaction = mapper.toEntity(request);
+        Long userId = SecurityUtils.getCurrentUserId();
 
-        // Nếu người dùng không set Date thì lấy Time hiện tại
+        // 1. Fetch User & Asset
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Asset asset = assetRepository.findById(request.getSymbol().toUpperCase())
+                .orElseThrow(() -> new AppException(ErrorCode.ASSET_NOT_FOUND));
+
+        // 2. Build Entity (Dùng Builder pattern nếu Entity có @Builder, hoặc dùng Setter như cũ đều được)
+        // Ở đây giữ nguyên logic Setter của bạn cho dễ hiểu
+        CryptoTransaction transaction = mapper.toEntity(request);
+        transaction.setUser(user);
+        transaction.setAsset(asset);
+
+        // Logic thời gian
         if (transaction.getTransactionDate() == null) {
             transaction.setTransactionDate(LocalDateTime.now());
         }
-        transaction.setSymbol(transaction.getSymbol().toUpperCase());
 
-        // Tạo 1 đối tượng rồi lưu vào DB để lấy ID của nó
-        CryptoTransaction savedTransaction = repository.save(transaction);
-
-        // Chuyển từ Entity đã lưu (có ID) -> DTO để trả về Controller
+        // 3. Save & Return
+        CryptoTransaction savedTransaction = transactionRepository.save(transaction);
         return mapper.toResponse(savedTransaction);
     }
 
-    //Hàm lấy list portfolio của 1 user
     @Override
+    @Transactional(readOnly = true)
     public List<PortfolioResponseDTO> getPortfolios() {
-        //Lấy tất cả transaction ở DB
-        List<CryptoTransaction> listTransaction = repository.findAll();
+        Long userId = SecurityUtils.getCurrentUserId();
 
-        //Gom các symbol thành 1 nhóm Map
+        // 1. QUAN TRỌNG: Chỉ lấy data của User hiện tại
+        // Lưu ý: Cần đảm bảo Repository dùng JOIN FETCH Asset để tránh N+1
+        List<CryptoTransaction> listTransaction = transactionRepository.findByUserId(userId);
+
+        if (listTransaction.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 2. Grouping: Sửa lỗi gọi getSymbol() trực tiếp
+        // Map<Symbol, List<Transaction>>
         Map<String, List<CryptoTransaction>> groupBySymbol = listTransaction.stream()
-                .collect(Collectors.groupingBy(CryptoTransaction::getSymbol));
+                .collect(Collectors.groupingBy(tx -> tx.getAsset().getSymbol()));
 
-        //Tạo 1 list portfolio rỗng
         List<PortfolioResponseDTO> listPortfolioResponse = new ArrayList<>();
 
-        //For each từng entry trong Map
-        for(Map.Entry<String, List<CryptoTransaction>> entry: groupBySymbol.entrySet()) {
+        // 3. Calculation Loop
+        for (Map.Entry<String, List<CryptoTransaction>> entry : groupBySymbol.entrySet()) {
             String symbol = entry.getKey();
-            List<CryptoTransaction> listTransactions = entry.getValue();
-            PortfolioResponseDTO dto = calculateCoinPortfolio(symbol, listTransactions); //chưa xử lý
+            List<CryptoTransaction> transactions = entry.getValue();
 
-            //BigDecimal là 1 Object nên không thể > 0 trực tiếp
-            if(dto.getQuantity().compareTo(BigDecimal.ZERO) > 0){
+            PortfolioResponseDTO dto = calculateCoinPortfolio(symbol, transactions);
+
+            // Chỉ trả về những coin còn số dư > 0
+            if (dto.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
                 listPortfolioResponse.add(dto);
             }
         }
         return listPortfolioResponse;
     }
 
+    /**
+     * Tách logic tính toán ra method riêng (Clean Code)
+     */
     private PortfolioResponseDTO calculateCoinPortfolio(String symbol, List<CryptoTransaction> listTransactions) {
-        BigDecimal totalQuantity = BigDecimal.ZERO; //Tổng số lượng coin đã mua
-        BigDecimal totalCost = BigDecimal.ZERO; //Tổng số tiền đã mua
-        BigDecimal currentQuantity = BigDecimal.ZERO; //Số lượng coin hiện tại đang nắm giữ
+        BigDecimal totalQuantityBought = BigDecimal.ZERO; // Tổng số lượng mua vào
+        BigDecimal totalCostBought = BigDecimal.ZERO;     // Tổng tiền bỏ ra mua
+        BigDecimal currentQuantity = BigDecimal.ZERO;     // Số lượng hiện tại đang giữ
 
-        //Duyệt từng transaction (cùng 1 symbol)
-        for(CryptoTransaction transaction: listTransactions){
-            if(transaction.getType() == TransactionType.BUY){
-                totalQuantity = totalQuantity.add(transaction.getQuantity()); //Thêm giá trị vào tổng số lượng đã mua
-                currentQuantity = currentQuantity.add(transaction.getQuantity()); //Thêm giá trị vào số lượng coin hiện tại đang nắm giữ
-                totalCost = totalCost.add(transaction.getPricePerCoin().multiply(transaction.getQuantity()));
+        for (CryptoTransaction tx : listTransactions) {
+            if (tx.getType() == TransactionType.BUY) {
+                totalQuantityBought = totalQuantityBought.add(tx.getQuantity());
+                currentQuantity = currentQuantity.add(tx.getQuantity());
 
-            }else if(transaction.getType() == TransactionType.SELL){
-                currentQuantity = currentQuantity.subtract(transaction.getQuantity());
+                // Tiền = Giá * Số lượng
+                BigDecimal cost = tx.getPricePerCoin().multiply(tx.getQuantity());
+                totalCostBought = totalCostBought.add(cost);
+
+            } else if (tx.getType() == TransactionType.SELL) {
+                currentQuantity = currentQuantity.subtract(tx.getQuantity());
             }
         }
 
-        //Trung bình giá đồng coin đó người dùng mua vào //CT:Avg = Total Cost / Total Quantity
-        BigDecimal avgPrice = BigDecimal.ZERO;
-        if(totalQuantity.compareTo(BigDecimal.ZERO) > 0){
-            avgPrice = totalCost.divide(totalQuantity, 8, RoundingMode.HALF_UP);
+        // Tính giá trung bình mua (Average Buy Price)
+        // Công thức: Tổng tiền mua / Tổng số lượng mua
+        BigDecimal avgBuyPrice = BigDecimal.ZERO;
+        if (totalQuantityBought.compareTo(BigDecimal.ZERO) > 0) {
+            avgBuyPrice = totalCostBought.divide(totalQuantityBought, 8, RoundingMode.HALF_UP);
         }
 
-        //Số tiền hiện tại đang đầu tư trong portfolio
-        BigDecimal currentCost = avgPrice.multiply(currentQuantity);
-        if(currentQuantity.compareTo(BigDecimal.ZERO) <= 0){
-            currentCost = BigDecimal.ZERO;
+        // Tính giá trị vốn gốc hiện tại (Current Investment Cost)
+        // Ví dụ: Mua giá TB 50k, đang giữ 2 BTC -> Vốn đang chôn là 100k
+        BigDecimal currentInvestment = avgBuyPrice.multiply(currentQuantity);
+
+        // Xử lý case số lượng <= 0 (đã bán hết)
+        if (currentQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            currentQuantity = BigDecimal.ZERO;
+            currentInvestment = BigDecimal.ZERO;
         }
 
         return PortfolioResponseDTO.builder()
                 .symbol(symbol)
                 .quantity(currentQuantity)
-                .averageBuyPrice(avgPrice)
-                .currentInvestment(currentCost)
+                .averageBuyPrice(avgBuyPrice)
+                .currentInvestment(currentInvestment)
                 .build();
     }
 }

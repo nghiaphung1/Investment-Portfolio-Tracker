@@ -3,7 +3,7 @@ package com.crypto.portfolio.controller;
 import com.crypto.portfolio.dto.users.ChangePasswordRequestDTO;
 import com.crypto.portfolio.dto.config.ApiResponse;
 import com.crypto.portfolio.dto.users.UserResponseDTO;
-import com.crypto.portfolio.security.CustomUserDetails;
+import com.crypto.portfolio.security.user.CustomUserDetails;
 import com.crypto.portfolio.service.UserService;
 import com.crypto.portfolio.service.facade.UserFacade;
 import jakarta.validation.Valid;
