@@ -4,7 +4,7 @@ import com.crypto.portfolio.domain.user.dto.ChangePasswordRequestDTO;
 import com.crypto.portfolio.domain.common.dto.ApiResponse;
 import com.crypto.portfolio.domain.user.dto.UserResponseDTO;
 import com.crypto.portfolio.security.user.CustomUserDetails;
-import com.crypto.portfolio.domain.user.service.UserService;
+import com.crypto.portfolio.domain.user.service.command.UserCommandService;
 import com.crypto.portfolio.domain.user.facade.UserFacade;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +18,14 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+    private final UserCommandService userCommandService;
     private final UserFacade userFacade;
     @PatchMapping("/change-password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody @Valid ChangePasswordRequestDTO request
     ) {
-        userService.changePassword(userDetails.getId(), request);
+        userFacade.changePassword(userDetails.getId(), request);
 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .code(1000)

@@ -1,6 +1,5 @@
-package com.crypto.portfolio.domain.user.service;
+package com.crypto.portfolio.domain.user.service.command;
 
-import com.crypto.portfolio.domain.user.dto.ChangePasswordRequestDTO;
 import com.crypto.portfolio.infrastructure.storage.dto.FileUploadResponseDTO;
 import com.crypto.portfolio.domain.user.entity.User;
 import com.crypto.portfolio.domain.user.entity.UserAccount;
@@ -17,56 +16,45 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class UserServiceImpl implements UserService {
+@Transactional
+public class UserCommandServiceImpl implements UserCommandService {
 
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
 
-
-    @Transactional
     @Override
-    public void changePassword(Long userId, ChangePasswordRequestDTO request) {
-        //  Check Confirm Password (Validation Logic)
-        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new AppException(ErrorCode.PASSWORD_CONFIRMATION_MISMATCH);
-        }
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
 
-        // Check trùng password cũ (Optional Validation)
-        if (request.getNewPassword().equals(request.getOldPassword())) {
+        // Check trùng password cũ
+        if (newPassword.equals(oldPassword)) {
             throw new AppException(ErrorCode.PASSWORD_IS_SAME_AS_OLD);
         }
 
-        // Tìm UserAccount loại LOCAL (Business Logic)
+        // Tìm UserAccount loại LOCAL
         UserAccount userAccount = userAccountRepository.findByUserIdAndProvider(userId, AuthProvider.LOCAL)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_HAS_NO_LOCAL_PASSWORD));
 
-        // Check Mật khẩu cũ (Security Logic)
-        if (!passwordEncoder.matches(request.getOldPassword(), userAccount.getPassword())) {
+        // Check Mật khẩu cũ
+        if (!passwordEncoder.matches(oldPassword, userAccount.getPassword())) {
             throw new AppException(ErrorCode.PASSWORD_INVALID);
         }
 
-        // Cập nhật mật khẩu mới (Persistence)
-        userAccount.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // Cập nhật mật khẩu mới
+        userAccount.setPassword(passwordEncoder.encode(newPassword));
         userAccountRepository.save(userAccount);
 
-        // Revoke token (Security Cleanup)
+        // Revoke token
         refreshTokenService.revokeAllUserTokens(userId);
     }
 
-    @Transactional
     @Override
-    public User updateAvatar(User user, FileUploadResponseDTO uploadResult) {
-        user.setAvatarUrl(uploadResult.getUrl());
-        user.setAvatarFileId(uploadResult.getFileId());
+    public User updateAvatar(User user, String url, String fileId) {
+        user.setAvatarUrl(url);
+        user.setAvatarFileId(fileId);
         return userRepository.save(user);
     }
 
-    @Override
-    public User getByUserId(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-    }
+
 }

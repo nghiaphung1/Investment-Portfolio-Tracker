@@ -2,6 +2,9 @@ package com.crypto.portfolio.domain.user.facade;
 
 import com.crypto.portfolio.annotation.Storage;
 import com.crypto.portfolio.config.FileUploadConfig;
+import com.crypto.portfolio.domain.user.dto.ChangePasswordRequestDTO;
+import com.crypto.portfolio.domain.user.service.command.UserCommandService;
+import com.crypto.portfolio.domain.user.service.query.UserQueryService;
 import com.crypto.portfolio.infrastructure.storage.dto.FileUploadResponseDTO;
 import com.crypto.portfolio.domain.user.dto.UserResponseDTO;
 import com.crypto.portfolio.domain.user.entity.User;
@@ -9,13 +12,13 @@ import com.crypto.portfolio.exception.AppException;
 import com.crypto.portfolio.exception.ErrorCode;
 import com.crypto.portfolio.domain.user.mapper.UserMapper;
 import com.crypto.portfolio.application.ports.output.StorageService;
-import com.crypto.portfolio.domain.user.service.UserService;
 import com.crypto.portfolio.constants.StorageProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -32,7 +35,8 @@ public class UserFacadeImpl implements UserFacade {
     @Storage(StorageProvider.CLOUDINARY)
     private final StorageService storageService;
     private final UserMapper userMapper;
-    private final UserService userService;
+    private final UserQueryService userQueryService;
+    private final UserCommandService userCommandService;
     @Qualifier("fileTaskExecutor")
     private final Executor fileTaskExecutor;
     @Value("${cloudinary.folder.avatars}")
@@ -43,7 +47,7 @@ public class UserFacadeImpl implements UserFacade {
     public UserResponseDTO uploadAvatar(MultipartFile file, Long userId) {
         checkValidImageFile(file);
 
-        User user = userService.getByUserId(userId);
+        User user = userQueryService.getByUserId(userId);
 
         String oldFileId = user.getAvatarFileId();
 
@@ -54,7 +58,7 @@ public class UserFacadeImpl implements UserFacade {
         FileUploadResponseDTO uploadResult = storageService.uploadFile(file, uniqueFileName, avatarFolder);
 
         try {
-            user = userService.updateAvatar(user, uploadResult);
+            user = userCommandService.updateAvatar(user, uploadResult.getUrl(), uploadResult.getFileId());
         }
         catch (Exception e) {
             try {
@@ -74,6 +78,14 @@ public class UserFacadeImpl implements UserFacade {
         }
 
         return userMapper.toUserResponse(user);
+    }
+
+    @Override
+    public void changePassword(Long userId, ChangePasswordRequestDTO request) {
+        if(!request.getNewPassword().equals(request.getConfirmPassword())){
+            throw new AppException(ErrorCode.PASSWORD_CONFIRMATION_MISMATCH);
+        }
+        userCommandService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
     }
 
     private void checkValidImageFile(MultipartFile file) {
