@@ -1,6 +1,6 @@
 package com.crypto.portfolio.event;
 
-import com.crypto.portfolio.service.EmailService;
+import com.crypto.portfolio.application.ports.output.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;

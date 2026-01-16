@@ -1,6 +1,6 @@
 package com.crypto.portfolio.exception;
 
-import com.crypto.portfolio.dto.config.ApiResponse;
+import com.crypto.portfolio.domain.common.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.RedisConnectionFailureException;

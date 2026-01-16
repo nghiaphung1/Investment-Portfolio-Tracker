@@ -48,7 +48,7 @@ public class RedisConfig {
     public DefaultRedisScript<String> saveOtpScript() {
         DefaultRedisScript<String> script = new DefaultRedisScript<>();
         // Load file từ resources
-        script.setLocation(new ClassPathResource("scripts/save_otp.lua"));
+        script.setLocation(new ClassPathResource("scripts/otp/save_otp.lua"));
         script.setResultType(String.class);
         return script;
     }
@@ -56,7 +56,7 @@ public class RedisConfig {
     @Bean
     public DefaultRedisScript<String> validateOtpScript() {
         DefaultRedisScript<String> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("scripts/validate_otp.lua"));
+        script.setLocation(new ClassPathResource("scripts/otp/validate_otp.lua"));
         script.setResultType(String.class);
         return script;
     }
@@ -64,7 +64,7 @@ public class RedisConfig {
     @Bean
     public DefaultRedisScript<String> resendOtpScript() {
         DefaultRedisScript<String> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("scripts/resend_otp.lua"));
+        script.setLocation(new ClassPathResource("scripts/otp/resend_otp.lua"));
         script.setResultType(String.class);
         return script;
     }
@@ -72,7 +72,7 @@ public class RedisConfig {
     @Bean
     public DefaultRedisScript<List> saveRefreshTokenScript() {
         DefaultRedisScript<List> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("scripts/save_rt.lua"));
+        script.setLocation(new ClassPathResource("scripts/refresh_token/save_rt.lua"));
         script.setResultType(List.class);
         return script;
     }

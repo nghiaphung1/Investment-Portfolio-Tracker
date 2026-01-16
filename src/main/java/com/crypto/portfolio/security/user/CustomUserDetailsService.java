@@ -1,10 +1,10 @@
 package com.crypto.portfolio.security.user;
 
-import com.crypto.portfolio.entity.User;
-import com.crypto.portfolio.entity.UserAccount;
+import com.crypto.portfolio.domain.user.entity.User;
+import com.crypto.portfolio.domain.user.entity.UserAccount;
 import com.crypto.portfolio.constants.AuthProvider;
-import com.crypto.portfolio.repository.UserAccountRepository;
-import com.crypto.portfolio.repository.UserRepository;
+import com.crypto.portfolio.domain.user.repository.UserAccountRepository;
+import com.crypto.portfolio.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

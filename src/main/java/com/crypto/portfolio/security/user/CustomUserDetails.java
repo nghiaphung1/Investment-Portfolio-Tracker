@@ -1,7 +1,7 @@
 package com.crypto.portfolio.security.user;
 
-import com.crypto.portfolio.entity.User;
-import com.crypto.portfolio.entity.UserAccount;
+import com.crypto.portfolio.domain.user.entity.User;
+import com.crypto.portfolio.domain.user.entity.UserAccount;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

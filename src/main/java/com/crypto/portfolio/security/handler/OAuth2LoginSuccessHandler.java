@@ -1,12 +1,12 @@
 package com.crypto.portfolio.security.handler;
 
-import com.crypto.portfolio.entity.User;
-import com.crypto.portfolio.entity.UserAccount;
+import com.crypto.portfolio.domain.user.entity.User;
+import com.crypto.portfolio.domain.user.entity.UserAccount;
 import com.crypto.portfolio.constants.AuthProvider;
-import com.crypto.portfolio.repository.UserAccountRepository;
-import com.crypto.portfolio.repository.UserRepository;
-import com.crypto.portfolio.utils.JwtUtils;
-import com.crypto.portfolio.service.serviceImpl.RefreshTokenServiceImpl;
+import com.crypto.portfolio.domain.user.repository.UserAccountRepository;
+import com.crypto.portfolio.domain.user.repository.UserRepository;
+import com.crypto.portfolio.security.jwt.JwtUtils;
+import com.crypto.portfolio.domain.auth.service.RefreshTokenServiceImpl;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

@@ -1,6 +1,6 @@
 package com.crypto.portfolio.security.handler;
 
-import com.crypto.portfolio.dto.config.ApiResponse;
+import com.crypto.portfolio.domain.common.dto.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
