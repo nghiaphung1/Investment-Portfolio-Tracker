@@ -1,5 +1,6 @@
 package com.crypto.portfolio.domain.user.facade;
 
+import com.crypto.portfolio.annotation.Facade;
 import com.crypto.portfolio.annotation.Storage;
 import com.crypto.portfolio.config.FileUploadConfig;
 import com.crypto.portfolio.domain.user.dto.ChangePasswordRequestDTO;
@@ -17,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -28,7 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-@Service
+@Facade
 @RequiredArgsConstructor
 @Slf4j
 public class UserFacadeImpl implements UserFacade {

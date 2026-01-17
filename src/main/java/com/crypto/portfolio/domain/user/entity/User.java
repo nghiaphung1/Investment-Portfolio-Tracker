@@ -42,14 +42,14 @@ public class User extends BaseEntity {
 
     @ManyToMany(fetch = FetchType.EAGER) // Lấy luôn Role khi load User
     @JoinTable(
-            name = "users_roles", // Tên bảng trung gian trong DB
-            joinColumns = @JoinColumn(name = "user_id", nullable = false), // Khóa ngoại trỏ tới bảng users
-            inverseJoinColumns = @JoinColumn(name = "role_id", nullable = false) // Khóa ngoại trỏ tới bảng roles
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id", nullable = false),
+            inverseJoinColumns = @JoinColumn(name = "role_id", nullable = false)
     )
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
-    // Helper method để thêm Role cực kỳ quan trọng
+    // Helper method để thêm Role và gán user cho role cùng lúc
     public void addRole(Role role) {
         this.getRoles().add(role);
         role.getUsers().add(this);
@@ -59,6 +59,6 @@ public class User extends BaseEntity {
     // Helper method để thêm UserAccount và gán user cho account cùng lúc
     public void addUserAccount(UserAccount account) {
         this.getAccounts().add(account);
-        account.setUser(this); // Bước này cực kỳ quan trọng để lưu được user_id vào DB
+        account.setUser(this);
     }
 }

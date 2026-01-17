@@ -18,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserCommandService userCommandService;
     private final UserFacade userFacade;
     @PatchMapping("/change-password")
     public ResponseEntity<ApiResponse<Void>> changePassword(

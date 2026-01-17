@@ -7,10 +7,10 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data // Lombok tự sinh Getter/Setter
-public class TransactionRequestDTO {
+public class CreateTransactionRequestDTO {
 
     @NotBlank(message = "INVALID_SYMBOL")
     private String symbol;
@@ -26,6 +26,5 @@ public class TransactionRequestDTO {
     @NotNull(message = "INVALID_TRANSACTION_TYPE")
     private TransactionType type;
 
-    // Ngày giao dịch (có thể null, nếu null thì Service tự lấy giờ hiện tại)
-    private LocalDateTime transactionDate;
+    private Instant transactionDate;
 }

@@ -1,15 +1,16 @@
-package com.crypto.portfolio.domain.transaction.dto;
+package com.crypto.portfolio.domain.transaction.model;
 
 import com.crypto.portfolio.constants.TransactionType;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
-
-@Data
-public class TransactionResponseDTO {
-    private Long id; // Quan trọng: Output phải có ID để FE quản lý
+@Getter
+@Builder
+public class CreateTransactionCommand {
+    private Long userId;
     private String symbol;
     private BigDecimal quantity;
     private BigDecimal pricePerCoin;

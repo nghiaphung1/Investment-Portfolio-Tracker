@@ -11,25 +11,25 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL) // Bỏ qua các trường null
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
 
-    // Thời gian phản hồi (Format đẹp luôn)
+    // Thời gian phản hồi
     @Builder.Default
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp = LocalDateTime.now();
 
-    // Mã nghiệp vụ (Business Code: 1000, 9999...)
+    // Mã code nội bộ
     @Builder.Default
     private int code = 1000;
 
-    // Thông báo cho người dùng (Human readable)
+    // Message thông báo
     private String message;
 
-    // Dữ liệu chính (Payload)
+    // Data trả về
     private T result;
 
-    // Trace ID (Để truy vết lỗi trong Log) - Tự sinh ngẫu nhiên
+    // Trace ID (Để truy vết lỗi trong Log)
     @Builder.Default
     private String requestId = UUID.randomUUID().toString();
 }

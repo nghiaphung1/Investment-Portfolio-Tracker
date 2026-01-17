@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "transactions")
@@ -32,7 +32,7 @@ public class CryptoTransaction extends BaseEntity {
     private BigDecimal pricePerCoin; // Giá tại thời điểm mua (Ví dụ: $65000.50)
 
     @Column(nullable = false)
-    private LocalDateTime transactionDate; // Thời gian giao dịch
+    private Instant transactionDate; // Thời gian giao dịch
 
     @Enumerated(EnumType.STRING)
     private TransactionType type; // BUY hoặc SELL

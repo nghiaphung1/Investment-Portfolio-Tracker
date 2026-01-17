@@ -1,5 +1,6 @@
 package com.crypto.portfolio.domain.auth.facade;
 
+import com.crypto.portfolio.annotation.Facade;
 import com.crypto.portfolio.domain.auth.dto.RegisterRequestDTO;
 import com.crypto.portfolio.domain.user.dto.UserResponseDTO;
 import com.crypto.portfolio.domain.user.entity.User;
@@ -12,13 +13,12 @@ import com.crypto.portfolio.domain.otp.service.OtpService;
 import com.crypto.portfolio.domain.otp.core.OtpGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@Service
+@Facade
 @RequiredArgsConstructor
 public class AuthFacadeImpl implements AuthFacade {
     private final AuthService authService;

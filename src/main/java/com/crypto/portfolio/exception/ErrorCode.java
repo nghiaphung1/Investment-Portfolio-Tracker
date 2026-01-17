@@ -16,6 +16,7 @@ public enum ErrorCode {
     SERVICE_UNAVAILABLE(1004, "Dịch vụ tạm thời gián đoạn. Vui lòng thử lại sau ít phút.", HttpStatus.SERVICE_UNAVAILABLE), // 503
     REDIS_CONNECTION_ERROR(1005, "Kết nối Redis thất bại", HttpStatus.INTERNAL_SERVER_ERROR), // 500
     PARSE_ERROR(1006, "Lỗi khi chuyển đổi dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR), // 500
+    INVALID_FUTURE_DATE(1007, "Ngày giao dịch không được ở tương lai", HttpStatus.BAD_REQUEST),
 
     // 2. MODULE TRANSACTION - Range: 2000 -> 2999
     INVALID_SYMBOL(2001, "Tên coin không được để trống", HttpStatus.BAD_REQUEST),

@@ -1,12 +1,13 @@
 package com.crypto.portfolio.domain.transaction.controller;
 
 import com.crypto.portfolio.domain.common.dto.ApiResponse;
-import com.crypto.portfolio.domain.transaction.dto.portfolio.PortfolioResponseDTO;
-import com.crypto.portfolio.domain.transaction.dto.TransactionRequestDTO;
+import com.crypto.portfolio.domain.transaction.dto.CreateTransactionRequestDTO;
 import com.crypto.portfolio.domain.transaction.dto.TransactionResponseDTO;
-import com.crypto.portfolio.domain.transaction.service.TransactionServiceImpl;
+import com.crypto.portfolio.domain.transaction.facade.TransactionFacade;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,12 +17,13 @@ import java.util.List;
 @RequestMapping("/api/transactions")
 public class TransactionController {
 
-    private final TransactionServiceImpl transactionService;
+    private final TransactionFacade transactionFacade;
 
     // API lấy danh sách giao dịch
     @GetMapping
-    public ApiResponse<List<TransactionResponseDTO>> getAllTransaction() {
-        List<TransactionResponseDTO> result = transactionService.getAllTransactions();
+    public ApiResponse<List<TransactionResponseDTO>> getAllTransaction(@AuthenticationPrincipal Jwt jwt) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        List<TransactionResponseDTO> result = transactionFacade.getAllTransactions(userId);
 
         return ApiResponse.<List<TransactionResponseDTO>>builder()
                 .result(result)
@@ -31,8 +33,10 @@ public class TransactionController {
 
     // API thêm giao dịch mới
     @PostMapping
-    public ApiResponse<TransactionResponseDTO> createTransaction(@Valid @RequestBody TransactionRequestDTO request) {
-        TransactionResponseDTO result = transactionService.addTransaction(request);
+    public ApiResponse<TransactionResponseDTO> createTransaction(@Valid @RequestBody CreateTransactionRequestDTO request,
+                                                                 @AuthenticationPrincipal Jwt jwt) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        TransactionResponseDTO result = transactionFacade.addTransaction(request, userId);
 
         return ApiResponse.<TransactionResponseDTO>builder()
                 .result(result)
@@ -41,13 +45,13 @@ public class TransactionController {
     }
 
     //API lấy danh sách symbol trong portfolio
-    @GetMapping("/portfolio")
-    public ApiResponse<List<PortfolioResponseDTO>> getPortfolio() {
-        List<PortfolioResponseDTO> result = transactionService.getPortfolios();
-
-        return ApiResponse.<List<PortfolioResponseDTO>>builder()
-                .result(result)
-                .message("Lấy danh sách portfolio thành công")
-                .build();
-    }
+//    @GetMapping("/portfolio")
+//    public ApiResponse<List<PortfolioResponseDTO>> getPortfolio() {
+//        List<PortfolioResponseDTO> result = transactionFacade.getPortfolios();
+//
+//        return ApiResponse.<List<PortfolioResponseDTO>>builder()
+//                .result(result)
+//                .message("Lấy danh sách portfolio thành công")
+//                .build();
+//    }
 }
